@@ -2,11 +2,14 @@
 setlocal
 cd /d "%~dp0\.."
 
-echo Starting Valuator instances...
-start "Valuator-5001" cmd /k "dotnet run --project Valuator --urls http://0.0.0.0:5001"
-start "Valuator-5002" cmd /k "dotnet run --project Valuator --urls http://0.0.0.0:5002"
+echo Building project...
+dotnet build
 
-echo Starting Nginx (Docker)...
+echo Starting Valuator instances...
+start "Valuator-5001" cmd /c "dotnet run --no-build --project Valuator --urls http://0.0.0.0:5001"
+start "Valuator-5002" cmd /c "dotnet run --no-build --project Valuator --urls http://0.0.0.0:5002"
+
+echo Starting Nginx...
 docker rm -f valuator-nginx 1>nul 2>nul
 docker run --name valuator-nginx -d -p 8080:8080 ^
   -v "%cd%\nginx\conf\nginx.conf:/etc/nginx/nginx.conf:ro" ^
