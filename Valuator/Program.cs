@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using Valuator.Services;
 
 namespace Valuator;
 
@@ -13,6 +14,8 @@ public class Program
 
         var redisConnectionString = builder.Configuration.GetConnectionString( "Redis" ) ?? "localhost:6379";
         builder.Services.AddSingleton<IConnectionMultiplexer>( _ => ConnectionMultiplexer.Connect( redisConnectionString ) );
+
+        builder.Services.AddSingleton<RankTaskPublisher>();
 
         var app = builder.Build();
 
