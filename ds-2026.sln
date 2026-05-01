@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Valuator", "Valuator\Valuat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RankCalculator", "RankCalculator\RankCalculator.csproj", "{BE23864C-0006-49B0-A795-4C9F2068EE66}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventsLogger", "EventsLogger\EventsLogger.csproj", "{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{BE23864C-0006-49B0-A795-4C9F2068EE66}.Release|x64.Build.0 = Release|Any CPU
 		{BE23864C-0006-49B0-A795-4C9F2068EE66}.Release|x86.ActiveCfg = Release|Any CPU
 		{BE23864C-0006-49B0-A795-4C9F2068EE66}.Release|x86.Build.0 = Release|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Debug|x64.Build.0 = Debug|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Debug|x86.Build.0 = Debug|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Release|x64.ActiveCfg = Release|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Release|x64.Build.0 = Release|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Release|x86.ActiveCfg = Release|Any CPU
+		{1D3BC7AE-1C34-4BCF-8333-1F3A9F53EE8B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -16,6 +16,7 @@ public class Program
         builder.Services.AddSingleton<IConnectionMultiplexer>( _ => ConnectionMultiplexer.Connect( redisConnectionString ) );
 
         builder.Services.AddSingleton<RankTaskPublisher>();
+        builder.Services.AddSingleton<EventsPublisher>();
 
         var app = builder.Build();
 

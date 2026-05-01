@@ -12,9 +12,11 @@ for %%P in (5001 5002) do (
   )
 )
 
-echo Killing RankCalculator windows...
-taskkill /FI "WINDOWTITLE eq RankCalculator-1" /T /F 1>nul 2>nul
-taskkill /FI "WINDOWTITLE eq RankCalculator-2" /T /F 1>nul 2>nul
+echo Killing RankCalculator processes...
+taskkill /IM RankCalculator.exe /T /F 1>nul 2>nul
+
+echo Killing EventsLogger processes...
+taskkill /IM EventsLogger.exe /T /F 1>nul 2>nul
 
 echo Done.
 endlocal

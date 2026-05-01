@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using StackExchange.Redis;
@@ -7,7 +8,8 @@ namespace RankCalculator;
 
 class Program
 {
-    private const string QueueName = "valuator.processing.rank";
+    private const string TaskQueueName = "valuator.processing.rank";
+    private const string EventsExchangeName = "valuator.events";
 
     public static async Task Main(string[] args)
     {
@@ -27,19 +29,23 @@ class Program
             };
 
             await using IConnection connection = await factory.CreateConnectionAsync();
-            await using IChannel channel = await connection.CreateChannelAsync();
+
+            await using IChannel taskChannel = await connection.CreateChannelAsync();
+            await using IChannel eventsChannel = await connection.CreateChannelAsync();
 
             using IConnectionMultiplexer redis =
                 await ConnectionMultiplexer.ConnectAsync("localhost:6379");
             IDatabase db = redis.GetDatabase();
 
-            await DeclareTopologyAsync(channel);
-            string consumerTag = await RunConsumer(channel, db, instanceName);
+            await DeclareTaskTopologyAsync(taskChannel);
+            await DeclareEventsTopologyAsync(eventsChannel);
+
+            string consumerTag = await RunConsumer(taskChannel, eventsChannel, db, instanceName);
 
             Console.WriteLine("Press Enter to exit");
             Console.ReadLine();
 
-            await channel.BasicCancelAsync(consumerTag);
+            await taskChannel.BasicCancelAsync(consumerTag);
 
             Console.WriteLine("done");
         }
@@ -51,22 +57,24 @@ class Program
     }
 
     private static async Task<string> RunConsumer(
-        IChannel channel,
+        IChannel taskChannel,
+        IChannel eventsChannel,
         IDatabase db,
         string instanceName)
     {
-        AsyncEventingBasicConsumer consumer = new(channel);
-        consumer.ReceivedAsync += (_, eventArgs) => ConsumeAsync(channel, db, eventArgs, instanceName);
+        AsyncEventingBasicConsumer consumer = new(taskChannel);
+        consumer.ReceivedAsync += (_, eventArgs) => ConsumeAsync(taskChannel, eventsChannel, db, eventArgs, instanceName);
 
-        return await channel.BasicConsumeAsync(
-            queue: QueueName,
+        return await taskChannel.BasicConsumeAsync(
+            queue: TaskQueueName,
             autoAck: false,
             consumer: consumer
         );
     }
 
     private static async Task ConsumeAsync(
-        IChannel channel,
+        IChannel taskChannel,
+        IChannel eventsChannel,
         IDatabase db,
         BasicDeliverEventArgs eventArgs,
         string instanceName)
@@ -78,7 +86,7 @@ class Program
         if (!textValue.HasValue)
         {
             Console.WriteLine($"{instanceName} text not found for id={id}");
-            await channel.BasicAckAsync(eventArgs.DeliveryTag, false);
+            await taskChannel.BasicAckAsync(eventArgs.DeliveryTag, false);
             return;
         }
 
@@ -89,18 +97,52 @@ class Program
 
         await db.StringSetAsync("RANK-" + id, rank);
 
+        await PublishRankCalculatedAsync(eventsChannel, id, rank);
+
         Console.WriteLine($"{instanceName} calculated rank for id={id}: {rank}");
 
-        await channel.BasicAckAsync(eventArgs.DeliveryTag, false);
+        await taskChannel.BasicAckAsync(eventArgs.DeliveryTag, false);
     }
 
-    private static async Task DeclareTopologyAsync(IChannel channel)
+    private static async Task PublishRankCalculatedAsync(
+    IChannel channel,
+    string textId,
+    double rank)
+    {
+        var eventMessage = new
+        {
+            EventType = "RankCalculated",
+            TextId = textId,
+            Rank = rank
+        };
+
+        byte[] messageData = Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(eventMessage)
+        );
+
+        await channel.BasicPublishAsync(
+            exchange: EventsExchangeName,
+            routingKey: "",
+            mandatory: false,
+            body: messageData
+        );
+    }
+
+    private static async Task DeclareTaskTopologyAsync(IChannel channel)
     {
         await channel.QueueDeclareAsync(
-            queue: QueueName,
+            queue: TaskQueueName,
             durable: true,
             exclusive: false,
             autoDelete: false
+        );
+    }
+
+    private static async Task DeclareEventsTopologyAsync(IChannel channel)
+    {
+        await channel.ExchangeDeclareAsync(
+            exchange: EventsExchangeName,
+            type: ExchangeType.Fanout
         );
     }
 }

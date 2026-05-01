@@ -10,18 +10,21 @@ public class IndexModel : PageModel
 {
     private readonly ILogger<IndexModel> _logger;
     private readonly IDatabase _db;
-    private readonly RankTaskPublisher _publisher;
+    private readonly RankTaskPublisher _rankTaskPublisher;
+    private readonly EventsPublisher _eventsPublisher;
 
     private const string TextsSetKey = "TEXTS_SET";
 
     public IndexModel( 
         ILogger<IndexModel> logger, 
         IConnectionMultiplexer redis, 
-        RankTaskPublisher publisher)
+        RankTaskPublisher rankTaskPublisher,
+        EventsPublisher eventsPublisher)
     {
         _logger = logger;
         _db = redis.GetDatabase();
-        _publisher = publisher;
+        _rankTaskPublisher = rankTaskPublisher;
+        _eventsPublisher = eventsPublisher;
     }
 
     public void OnGet()
@@ -50,7 +53,13 @@ public class IndexModel : PageModel
         int similarity = isNewText ? 0 : 1;
         _db.StringSet( similarityKey, similarity );
 
-        _publisher.Publish(id, HttpContext.RequestAborted);
+        _eventsPublisher.PublishSimilarityCalculated(
+            id,
+            similarity,
+            HttpContext.RequestAborted
+        );
+
+        _rankTaskPublisher.Publish(id, HttpContext.RequestAborted);
 
         return Redirect( $"summary?id={id}" );
     }

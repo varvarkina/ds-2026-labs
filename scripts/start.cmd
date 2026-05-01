@@ -14,6 +14,10 @@ echo Starting RankCalculator instances...
 start "RankCalculator-1" cmd /c "dotnet run --no-build --project RankCalculator -- RankCalculator-1"
 start "RankCalculator-2" cmd /c "dotnet run --no-build --project RankCalculator -- RankCalculator-2"
 
+echo Starting EventsLogger instances...
+start "EventsLogger-1" cmd /c "dotnet run --no-build --project EventsLogger -- EventsLogger-1"
+start "EventsLogger-2" cmd /c "dotnet run --no-build --project EventsLogger -- EventsLogger-2"
+
 echo Starting Nginx...
 docker rm -f valuator-nginx 1>nul 2>nul
 docker run --name valuator-nginx -d -p 8080:8080 ^
