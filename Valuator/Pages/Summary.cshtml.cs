@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
 namespace Valuator.Pages;
@@ -19,6 +14,7 @@ public class SummaryModel : PageModel
         _db = redis.GetDatabase();
     }
 
+    public string TextId { get; private set; } = string.Empty;
     public double? Rank { get; private set; }
     public int Similarity { get; private set; }
     public bool IsRankReady => Rank.HasValue;
@@ -32,6 +28,8 @@ public class SummaryModel : PageModel
         {
             return RedirectToPage( "Index" );
         }
+
+        TextId = id;
 
         RedisValue rankValue = _db.StringGet("RANK-" + id);
         Rank = rankValue.HasValue ? (double)rankValue : null;

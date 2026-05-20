@@ -63,7 +63,7 @@ class Program
         string instanceName)
     {
         AsyncEventingBasicConsumer consumer = new(taskChannel);
-        consumer.ReceivedAsync += (_, eventArgs) => ConsumeAsync(taskChannel, eventsChannel, db, eventArgs, instanceName);
+        consumer.ReceivedAsync += (_, eventArgs) => ConsumeAsync(taskChannel, eventsChannel, db, eventArgs, instanceName, CancellationToken.None);
 
         return await taskChannel.BasicConsumeAsync(
             queue: TaskQueueName,
@@ -77,7 +77,8 @@ class Program
         IChannel eventsChannel,
         IDatabase db,
         BasicDeliverEventArgs eventArgs,
-        string instanceName)
+        string instanceName,
+        CancellationToken ct)
     {
         string id = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
         Console.WriteLine($"{instanceName} received id={id}");
@@ -91,6 +92,10 @@ class Program
         }
 
         string text = (string)textValue!;
+
+        TimeSpan interval = TimeSpan.FromSeconds( new Random().Next( 3, 15 ) );
+        Console.WriteLine( $"Waiting {interval}" );
+        await Task.Delay( interval, ct );
 
         int nonLetterCount = text.Count(c => !char.IsLetter(c));
         double rank = (double)nonLetterCount / text.Length;

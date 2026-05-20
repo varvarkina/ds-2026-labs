@@ -3,13 +3,24 @@
 @{
 }
 
-@if (Model.IsRankReady)
-{
-<p>Оценка содержания: @Model.Rank</p>
-}
-else
-{
-<p>Оценка содержания не завершена</p>
-}
+<p>Оценка содержания: <span id="rank">@(Model.IsRankReady ? Model.Rank : "")</span></p>
+<p>Плагиат: <span id="similarity">@Model.Similarity</span></p>
+<p style="display:none" id="text-id">@Model.TextId</p>
 
-<p>Плагиат: @Model.Similarity</p>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+<script>
+    const textId = document.getElementById("text-id").textContent.trim();
+
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/summaryHub")
+        .build();
+
+    connection.on("RankCalculated", function (message) {
+        if (message.textId !== textId) return;
+        document.getElementById("rank").textContent = message.rank;
+    });
+
+    connection.start().then(function () {
+        connection.invoke("Subscribe", textId);
+    });
+</script> 
