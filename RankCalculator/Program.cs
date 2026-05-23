@@ -11,6 +11,8 @@ class Program
     private const string TaskQueueName = "valuator.processing.rank";
     private const string EventsExchangeName = "valuator.events";
 
+    private static readonly Dictionary<string, IConnectionMultiplexer> _shardConnections = new();
+
     public static async Task Main(string[] args)
     {
         try
@@ -20,6 +22,16 @@ class Program
                 : $"RankCalculator-{Environment.ProcessId}";
 
             Console.WriteLine($"{instanceName} started");
+
+            var mainConnStr = Environment.GetEnvironmentVariable( "DB_MAIN" ) ?? "localhost:6000";
+            using var mainRedis = await ConnectionMultiplexer.ConnectAsync( mainConnStr );
+
+            _shardConnections[ "RU" ] = await ConnectionMultiplexer.ConnectAsync(
+                Environment.GetEnvironmentVariable( "DB_RU" ) ?? "localhost:6001" );
+            _shardConnections[ "EU" ] = await ConnectionMultiplexer.ConnectAsync(
+                Environment.GetEnvironmentVariable( "DB_EU" ) ?? "localhost:6002" );
+            _shardConnections[ "ASIA" ] = await ConnectionMultiplexer.ConnectAsync(
+                Environment.GetEnvironmentVariable( "DB_ASIA" ) ?? "localhost:6003" );
 
             ConnectionFactory factory = new ConnectionFactory
             {
@@ -33,14 +45,10 @@ class Program
             await using IChannel taskChannel = await connection.CreateChannelAsync();
             await using IChannel eventsChannel = await connection.CreateChannelAsync();
 
-            using IConnectionMultiplexer redis =
-                await ConnectionMultiplexer.ConnectAsync("localhost:6379");
-            IDatabase db = redis.GetDatabase();
-
             await DeclareTaskTopologyAsync(taskChannel);
             await DeclareEventsTopologyAsync(eventsChannel);
 
-            string consumerTag = await RunConsumer(taskChannel, eventsChannel, db, instanceName);
+            string consumerTag = await RunConsumer(taskChannel, eventsChannel, mainRedis, instanceName);
 
             Console.WriteLine("Press Enter to exit");
             Console.ReadLine();
@@ -59,11 +67,11 @@ class Program
     private static async Task<string> RunConsumer(
         IChannel taskChannel,
         IChannel eventsChannel,
-        IDatabase db,
+        IConnectionMultiplexer mainRedis,
         string instanceName)
     {
         AsyncEventingBasicConsumer consumer = new(taskChannel);
-        consumer.ReceivedAsync += (_, eventArgs) => ConsumeAsync(taskChannel, eventsChannel, db, eventArgs, instanceName);
+        consumer.ReceivedAsync += (_, eventArgs) => ConsumeAsync(taskChannel, eventsChannel, mainRedis, eventArgs, instanceName);
 
         return await taskChannel.BasicConsumeAsync(
             queue: TaskQueueName,
@@ -75,27 +83,49 @@ class Program
     private static async Task ConsumeAsync(
         IChannel taskChannel,
         IChannel eventsChannel,
-        IDatabase db,
+        IConnectionMultiplexer mainRedis,
         BasicDeliverEventArgs eventArgs,
         string instanceName)
     {
         string id = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
         Console.WriteLine($"{instanceName} received id={id}");
 
-        RedisValue textValue = await db.StringGetAsync("TEXT-" + id);
-        if (!textValue.HasValue)
+        var mainDb = mainRedis.GetDatabase();
+
+        var regionValue = await mainDb.StringGetAsync( $"SHARD-{id}" );
+        if ( !regionValue.HasValue )
         {
-            Console.WriteLine($"{instanceName} text not found for id={id}");
-            await taskChannel.BasicAckAsync(eventArgs.DeliveryTag, false);
+            Console.WriteLine( $"{instanceName} shard map not found for id={id}" );
+            await taskChannel.BasicAckAsync( eventArgs.DeliveryTag, false );
             return;
         }
 
-        string text = (string)textValue!;
+        string region = regionValue.ToString();
+        Console.WriteLine( $"LOOKUP: {id}, {region}" );
+
+        if ( !_shardConnections.TryGetValue( region, out var shardConnection ) )
+        {
+            Console.WriteLine( $"{instanceName} unknown region '{region}' for id={id}" );
+            await taskChannel.BasicAckAsync( eventArgs.DeliveryTag, false );
+            return;
+        }
+
+        IDatabase shardDb = shardConnection.GetDatabase();
+
+        var textValue = await shardDb.StringGetAsync( $"TEXT-{id}" );
+        if ( !textValue.HasValue )
+        {
+            Console.WriteLine( $"{instanceName} text not found in shard {region} for id={id}" );
+            await taskChannel.BasicAckAsync( eventArgs.DeliveryTag, false );
+            return;
+        }
+
+        string text = textValue.ToString();
 
         int nonLetterCount = text.Count(c => !char.IsLetter(c));
         double rank = (double)nonLetterCount / text.Length;
 
-        await db.StringSetAsync("RANK-" + id, rank);
+        await shardDb.StringSetAsync("RANK-" + id, rank);
 
         await PublishRankCalculatedAsync(eventsChannel, id, rank);
 

@@ -4,12 +4,25 @@
     ViewData["Title"] = "Главная";
 }
 
-<div class="text-center">
-    <form method="post">
-        <div class="col-2">Текст для оценки:</div>
-        <div class="col-10">
-            <textarea name="text" rows="5" cols="50"></textarea>
-            <input type="submit" />
+<div class="container">
+    <form method="post" class="col-md-6">
+
+        <div class="mb-3">
+            <label for="textInput" class="form-label">Текст для оценки:</label>
+            <textarea class="form-control" id="textInput" name="text" rows="5"></textarea>
         </div>
+
+        <div class="mb-3">
+            <label for="countrySelect" class="form-label">Страна:</label>
+            <select class="form-select" id="countrySelect" name="country">
+                <option value="">Выберите страну</option>
+                <option value="Russia">Russia</option>
+                <option value="France">France</option>
+                <option value="Germany">Germany</option>
+                <option value="UAE">UAE</option>
+                <option value="India">India</option>
+            </select>
+        </div>
+        <input type="submit" />
     </form>
 </div>

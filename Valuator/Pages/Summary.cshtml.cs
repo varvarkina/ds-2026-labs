@@ -1,42 +1,55 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
+using Valuator.Services;
 
 namespace Valuator.Pages;
 public class SummaryModel : PageModel
 {
     private readonly ILogger<SummaryModel> _logger;
-    private readonly IDatabase _db;
+    private readonly ShardConnectionManager _shardConnections;
 
-    public SummaryModel(ILogger<SummaryModel> logger, IConnectionMultiplexer redis )
+    public SummaryModel( ILogger<SummaryModel> logger, ShardConnectionManager shardConnections )
     {
         _logger = logger;
-        _db = redis.GetDatabase();
+        _shardConnections = shardConnections;
     }
 
     public double? Rank { get; private set; }
     public int Similarity { get; private set; }
     public bool IsRankReady => Rank.HasValue;
 
-    public IActionResult OnGet(string id)
+    public IActionResult OnGet( string id )
     {
-        _logger.LogDebug(id);
+        _logger.LogDebug( id );
 
-        string textKey = "TEXT-" + id;
-        if ( string.IsNullOrWhiteSpace( id ) || !_db.KeyExists( textKey ) )
+        if ( string.IsNullOrWhiteSpace( id ) )
         {
             return RedirectToPage( "Index" );
         }
 
-        RedisValue rankValue = _db.StringGet("RANK-" + id);
-        Rank = rankValue.HasValue ? (double)rankValue : null;
+        var mainDb = _shardConnections.GetMainDatabase();
 
-        RedisValue similarityValue = _db.StringGet( "SIMILARITY-" + id );
+        var regionValue = mainDb.StringGet( $"SHARD-{id}" );
+
+        if ( !regionValue.HasValue )
+        {
+            return RedirectToPage( "Index" );
+        }
+
+        string region = regionValue.ToString();
+        _logger.LogInformation( $"LOOKUP: {id}, {region}" );
+
+        var shardDb = _shardConnections.GetShardDatabase( region );
+
+        if ( !shardDb.KeyExists( $"TEXT-{id}" ) )
+        {
+            return RedirectToPage( "Index" );
+        }
+
+        var rankValue = shardDb.StringGet( "RANK-" + id );
+        Rank = rankValue.HasValue ? ( double )rankValue : null;
+
+        var similarityValue = shardDb.StringGet( "SIMILARITY-" + id );
         Similarity = similarityValue.HasValue ? ( int )similarityValue : 0;
 
         return Page();

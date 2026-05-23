@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using StackExchange.Redis;
-using System.Globalization;
 using Valuator.Services;
 
 namespace Valuator.Pages;
@@ -9,20 +7,29 @@ namespace Valuator.Pages;
 public class IndexModel : PageModel
 {
     private readonly ILogger<IndexModel> _logger;
-    private readonly IDatabase _db;
+    private readonly ShardConnectionManager _shardConnections;
     private readonly RankTaskPublisher _rankTaskPublisher;
     private readonly EventsPublisher _eventsPublisher;
 
     private const string TextsSetKey = "TEXTS_SET";
 
+    private static readonly Dictionary<string, string> CountryToRegion = new()
+    {
+        { "Russia", "RU" },
+        { "France", "EU" },
+        { "Germany", "EU" },
+        { "UAE", "ASIA" },
+        { "India", "ASIA" }
+    };
+
     public IndexModel( 
-        ILogger<IndexModel> logger, 
-        IConnectionMultiplexer redis, 
+        ILogger<IndexModel> logger,
+        ShardConnectionManager shardConnections,
         RankTaskPublisher rankTaskPublisher,
         EventsPublisher eventsPublisher)
     {
         _logger = logger;
-        _db = redis.GetDatabase();
+        _shardConnections = shardConnections;
         _rankTaskPublisher = rankTaskPublisher;
         _eventsPublisher = eventsPublisher;
     }
@@ -32,27 +39,32 @@ public class IndexModel : PageModel
 
     }
 
-    public IActionResult OnPost( string text )
+    public IActionResult OnPost( string text, string country )
     {
-        _logger.LogDebug( text );
+        _logger.LogDebug( text, country );
 
-        if ( string.IsNullOrEmpty( text ) )
+        if ( string.IsNullOrEmpty( text ) || string.IsNullOrEmpty( country ) )
         {
             return RedirectToPage( "Index" );
         }
 
+        if ( !CountryToRegion.TryGetValue( country, out var region ) )
+        {
+            _logger.LogError( $"Unknown country: {country}" );
+            return RedirectToPage( "Index" );
+        }
+
         string id = Guid.NewGuid().ToString();
+        var mainDb = _shardConnections.GetMainDatabase();
+        var shardDb = _shardConnections.GetShardDatabase( region );
 
-        string textKey = "TEXT-" + id;
-        // TODO: (pa1) сохранить в БД (Redis) text по ключу textKey
-        _db.StringSet( textKey, text );
+        mainDb.StringSet( $"SHARD-{id}", region );
 
-        string similarityKey = "SIMILARITY-" + id;
-        // TODO: (pa1) посчитать similarity и сохранить в БД (Redis) по ключу similarityKey
-        bool isNewText = _db.SetAdd( TextsSetKey, text );
+        shardDb.StringSet( $"TEXT-{id}", text );
+
+        bool isNewText = shardDb.SetAdd( TextsSetKey, text );
         int similarity = isNewText ? 0 : 1;
-        _db.StringSet( similarityKey, similarity );
-
+        shardDb.StringSet( $"SIMILARITY-{id}", similarity );
         _eventsPublisher.PublishSimilarityCalculated(
             id,
             similarity,

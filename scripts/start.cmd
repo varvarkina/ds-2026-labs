@@ -6,6 +6,17 @@ echo Building project...
 dotnet build
 if errorlevel 1 exit /b 1
 
+set "DB_MAIN=localhost:6000"
+set "DB_RU=localhost:6001"
+set "DB_EU=localhost:6002"
+set "DB_ASIA=localhost:6003"
+
+echo Starting existing containers...
+docker start redis-main redis-ru redis-eu redis-asia valuator-rabbitmq 2>nul
+
+echo Waiting for infrastructure to be ready...
+timeout /t 10 /nobreak > nul
+
 echo Starting Valuator instances...
 start "Valuator-5001" cmd /c "dotnet run --no-build --project Valuator --urls http://0.0.0.0:5001"
 start "Valuator-5002" cmd /c "dotnet run --no-build --project Valuator --urls http://0.0.0.0:5002"
