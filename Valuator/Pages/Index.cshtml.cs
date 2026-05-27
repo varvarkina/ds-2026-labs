@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Authorization;
 using StackExchange.Redis;
 using System.Globalization;
 using Valuator.Services;
 
 namespace Valuator.Pages;
 
+[Authorize]
 public class IndexModel : PageModel
 {
     private readonly ILogger<IndexModel> _logger;
@@ -44,11 +46,11 @@ public class IndexModel : PageModel
         string id = Guid.NewGuid().ToString();
 
         string textKey = "TEXT-" + id;
-        // TODO: (pa1) сохранить в БД (Redis) text по ключу textKey
-        _db.StringSet( textKey, text );
+        var textData = new { Text = text, Author = User.Identity?.Name ?? "anonymous" };
+        string json = System.Text.Json.JsonSerializer.Serialize(textData);
+        _db.StringSet(textKey, json);
 
         string similarityKey = "SIMILARITY-" + id;
-        // TODO: (pa1) посчитать similarity и сохранить в БД (Redis) по ключу similarityKey
         bool isNewText = _db.SetAdd( TextsSetKey, text );
         int similarity = isNewText ? 0 : 1;
         _db.StringSet( similarityKey, similarity );

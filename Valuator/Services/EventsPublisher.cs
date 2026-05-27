@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
+using Microsoft.Extensions.Configuration;
 
 namespace Valuator.Services;
 
@@ -11,11 +12,18 @@ public sealed class EventsPublisher
     private readonly IConnection _connection;
     private readonly IChannel _channel;
 
-    public EventsPublisher()
+    public EventsPublisher( IConfiguration configuration )
     {
+        var rabbitConfig = configuration.GetSection( "RabbitMQ" );
+        var host = rabbitConfig[ "HostName" ] ?? "localhost";
+        var user = rabbitConfig[ "UserName" ] ?? "guest";
+        var pass = rabbitConfig[ "Password" ] ?? "guest";
+
         ConnectionFactory factory = new ConnectionFactory
         {
-            HostName = "localhost",
+            HostName = host,
+            UserName = user,
+            Password = pass,
             AutomaticRecoveryEnabled = true
         };
 

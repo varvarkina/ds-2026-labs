@@ -1,6 +1,9 @@
 @echo off
 setlocal
 
+echo Stopping Redis and RabbitMQ containers...
+docker-compose -p pa7 down
+
 echo Stopping Nginx container...
 docker rm -f valuator-nginx 1>nul 2>nul
 

@@ -1,0 +1,21 @@
+services:
+  redis:
+    image: redis:alpine
+    container_name: pa7-redis
+    command: redis-server --requirepass redispass123
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    pull_policy: never
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: pa7-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rmq_user
+      RABBITMQ_DEFAULT_PASS: rmq_pass123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+    pull_policy: never

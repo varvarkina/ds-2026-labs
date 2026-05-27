@@ -4,7 +4,12 @@ cd /d "%~dp0\.."
 
 echo Building project...
 dotnet build
-if errorlevel 1 exit /b 1
+
+echo Starting Redis and RabbitMQ containers...
+docker-compose -p pa7 up -d
+
+echo Waiting for services to be ready...
+timeout /t 10 /nobreak > nul
 
 echo Starting Valuator instances...
 start "Valuator-5001" cmd /c "dotnet run --no-build --project Valuator --urls http://0.0.0.0:5001"

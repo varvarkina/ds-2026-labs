@@ -1,6 +1,8 @@
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 
 namespace Valuator.Services;
@@ -13,13 +15,18 @@ public sealed class RankTaskPublisher
     private readonly IConnection _connection;
     private readonly IChannel _channel;
 
-    public RankTaskPublisher()
+    public RankTaskPublisher( IConfiguration configuration )
     {
+        var rabbitConfig = configuration.GetSection( "RabbitMQ" );
+        var host = rabbitConfig[ "HostName" ] ?? "localhost";
+        var user = rabbitConfig[ "UserName" ] ?? "guest";
+        var pass = rabbitConfig[ "Password" ] ?? "guest";
+
         ConnectionFactory factory = new ConnectionFactory
         {
-            HostName = "localhost",
-            UserName = "guest",
-            Password = "guest",
+            HostName = host,
+            UserName = user,
+            Password = pass,
             AutomaticRecoveryEnabled = true
         };
 

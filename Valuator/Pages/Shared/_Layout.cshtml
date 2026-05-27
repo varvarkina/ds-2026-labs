@@ -26,6 +26,24 @@
                             <a class="nav-link text-dark" asp-area="" asp-page="/About">Об авторе</a>
                         </li>
                     </ul>
+                    <ul class="navbar-nav">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                        <li class="nav-item d-flex align-items-center">
+                            <span class="navbar-text text-dark me-2">@User.Identity.Name</span>
+                            <a class="nav-link text-dark" asp-page="/Logout">Выйти</a>
+                        </li>
+                        }
+                        else
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-page="/Login">Войти</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-page="/Register">Регистрация</a>
+                        </li>
+                         }
+                    </ul>
                 </div>
             </div>
         </nav>

@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Microsoft.Extensions.Configuration;
 
 namespace EventsLogger;
 
@@ -17,9 +18,21 @@ class Program
 
         Console.WriteLine( $"{instanceName} started" );
 
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        string rabbitHost = configuration["RabbitMQ:HostName"] ?? "localhost";
+        string rabbitUser = configuration["RabbitMQ:UserName"] ?? "guest";
+        string rabbitPass = configuration["RabbitMQ:Password"] ?? "guest";
+
         ConnectionFactory factory = new ConnectionFactory
         {
-            HostName = "localhost",
+            HostName = rabbitHost,
+            UserName = rabbitUser,
+            Password = rabbitPass,
             AutomaticRecoveryEnabled = true
         };
 

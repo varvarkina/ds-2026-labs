@@ -3,8 +3,15 @@ using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using StackExchange.Redis;
+using Microsoft.Extensions.Configuration;
 
 namespace RankCalculator;
+
+internal class TextEntry
+{
+    public string Text { get; set; } = "";
+    public string Author { get; set; } = "";
+}
 
 class Program
 {
@@ -21,11 +28,22 @@ class Program
 
             Console.WriteLine($"{instanceName} started");
 
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath( AppContext.BaseDirectory )
+                .AddJsonFile( "appsettings.json", optional: true )
+                .AddEnvironmentVariables()   
+                .Build();
+
+            string rabbitHost = configuration[ "RabbitMQ:HostName" ] ?? "localhost";
+            string rabbitUser = configuration[ "RabbitMQ:UserName" ] ?? "guest";
+            string rabbitPass = configuration[ "RabbitMQ:Password" ] ?? "guest";
+            string redisConn = configuration[ "Redis" ] ?? "localhost:6379";
+
             ConnectionFactory factory = new ConnectionFactory
             {
-                HostName = "localhost",
-                UserName = "guest",
-                Password = "guest"
+                HostName = rabbitHost,
+                UserName = rabbitUser,
+                Password = rabbitPass
             };
 
             await using IConnection connection = await factory.CreateConnectionAsync();
@@ -34,7 +52,7 @@ class Program
             await using IChannel eventsChannel = await connection.CreateChannelAsync();
 
             using IConnectionMultiplexer redis =
-                await ConnectionMultiplexer.ConnectAsync("localhost:6379");
+                await ConnectionMultiplexer.ConnectAsync( redisConn );
             IDatabase db = redis.GetDatabase();
 
             await DeclareTaskTopologyAsync(taskChannel);
@@ -90,7 +108,8 @@ class Program
             return;
         }
 
-        string text = (string)textValue!;
+        var entry = JsonSerializer.Deserialize<TextEntry>(textValue!);
+        string text = entry!.Text;
 
         int nonLetterCount = text.Count(c => !char.IsLetter(c));
         double rank = (double)nonLetterCount / text.Length;

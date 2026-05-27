@@ -15,8 +15,20 @@ public class Program
         var redisConnectionString = builder.Configuration.GetConnectionString( "Redis" ) ?? "localhost:6379";
         builder.Services.AddSingleton<IConnectionMultiplexer>( _ => ConnectionMultiplexer.Connect( redisConnectionString ) );
 
-        builder.Services.AddSingleton<RankTaskPublisher>();
-        builder.Services.AddSingleton<EventsPublisher>();
+        builder.Services.AddSingleton<RankTaskPublisher>( sp =>
+            new RankTaskPublisher( sp.GetRequiredService<IConfiguration>() ) );
+        builder.Services.AddSingleton<EventsPublisher>( sp =>
+            new EventsPublisher( sp.GetRequiredService<IConfiguration>() ) );
+
+        builder.Services.AddSingleton<UserService>();
+
+        builder.Services.AddAuthentication("Cookies")
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/Login";
+                options.AccessDeniedPath = "/AccessDenied";  
+                options.ExpireTimeSpan = TimeSpan.FromHours(2);
+            });
 
         var app = builder.Build();
 
@@ -25,10 +37,12 @@ public class Program
         {
             app.UseExceptionHandler("/Error");
         }
+
         app.UseStaticFiles();
 
         app.UseRouting();
 
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapRazorPages();

@@ -4,10 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using System.Text.Json;
 
 namespace Valuator.Pages;
+
+[Authorize]
 public class SummaryModel : PageModel
 {
     private readonly ILogger<SummaryModel> _logger;
@@ -33,6 +37,31 @@ public class SummaryModel : PageModel
             return RedirectToPage( "Index" );
         }
 
+        RedisValue json = _db.StringGet(textKey);
+        if (!json.HasValue)
+        {
+            return RedirectToPage("Index");
+        }
+
+        try
+        {
+            var textData = JsonSerializer.Deserialize<TextEntry>(json!);
+            if (textData == null)
+                return RedirectToPage("Index");
+
+            string currentUser = User.Identity?.Name!;
+            if (!string.Equals(textData.Author, currentUser, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("User {User} attempted to access text {Id} owned by {Owner}",
+                    currentUser, id, textData.Author);
+                return Forbid();  
+            }
+        }
+        catch (JsonException)
+        {
+            return RedirectToPage("Index");
+        }
+
         RedisValue rankValue = _db.StringGet("RANK-" + id);
         Rank = rankValue.HasValue ? (double)rankValue : null;
 
@@ -40,5 +69,11 @@ public class SummaryModel : PageModel
         Similarity = similarityValue.HasValue ? ( int )similarityValue : 0;
 
         return Page();
+    }
+
+    private class TextEntry
+    {
+        public string Text { get; set; } = "";
+        public string Author { get; set; } = "";
     }
 }
