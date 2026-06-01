@@ -7,12 +7,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace RankCalculator;
 
-internal class TextEntry
-{
-    public string Text { get; set; } = "";
-    public string Author { get; set; } = "";
-}
-
 class Program
 {
     private const string TaskQueueName = "valuator.processing.rank";
@@ -108,8 +102,7 @@ class Program
             return;
         }
 
-        var entry = JsonSerializer.Deserialize<TextEntry>(textValue!);
-        string text = entry!.Text;
+        string text = ( string )textValue!;
 
         int nonLetterCount = text.Count(c => !char.IsLetter(c));
         double rank = (double)nonLetterCount / text.Length;

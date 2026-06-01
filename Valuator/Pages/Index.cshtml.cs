@@ -46,9 +46,11 @@ public class IndexModel : PageModel
         string id = Guid.NewGuid().ToString();
 
         string textKey = "TEXT-" + id;
-        var textData = new { Text = text, Author = User.Identity?.Name ?? "anonymous" };
-        string json = System.Text.Json.JsonSerializer.Serialize(textData);
-        _db.StringSet(textKey, json);
+        _db.StringSet( textKey, text );
+
+        string authorKey = "AUTHOR-" + id;
+        string author = User.Identity!.Name!;
+        _db.StringSet( authorKey, author );
 
         string similarityKey = "SIMILARITY-" + id;
         bool isNewText = _db.SetAdd( TextsSetKey, text );
