@@ -1,5 +1,6 @@
 using StackExchange.Redis;
 using Valuator.Services;
+using Valuator.Hubs;
 
 namespace Valuator;
 
@@ -18,6 +19,9 @@ public class Program
         builder.Services.AddSingleton<RankTaskPublisher>();
         builder.Services.AddSingleton<EventsPublisher>();
 
+        builder.Services.AddSignalR();
+        builder.Services.AddHostedService<EventsConsumerService>();
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -32,6 +36,7 @@ public class Program
         app.UseAuthorization();
 
         app.MapRazorPages();
+        app.MapHub<RankHub>( "/rankHub" );
 
         app.Run();
     }

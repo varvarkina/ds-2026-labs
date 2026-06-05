@@ -22,6 +22,7 @@ public class SummaryModel : PageModel
     public double? Rank { get; private set; }
     public int Similarity { get; private set; }
     public bool IsRankReady => Rank.HasValue;
+    public string? TextId { get; private set; }
 
     public IActionResult OnGet(string id)
     {
@@ -32,6 +33,8 @@ public class SummaryModel : PageModel
         {
             return RedirectToPage( "Index" );
         }
+
+        TextId = id;
 
         RedisValue rankValue = _db.StringGet("RANK-" + id);
         Rank = rankValue.HasValue ? (double)rankValue : null;
